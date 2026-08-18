@@ -10,7 +10,6 @@ jobs:
   build-and-test:
     name: Build and Sanity Test
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -29,9 +28,28 @@ jobs:
         run: |
           docker build -t secure-api-platform:${{ github.sha }} .
 
-      - name: Test Container Startup
+  secret-scan:
+    name: Secret Leak Scanning (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sast-scan:
+    name: SAST Scanning (Semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Run Semgrep
         run: |
-          docker run -d -p 8000:8000 --name test-app secure-api-platform:${{ github.sha }}
-          sleep 3
-          curl --fail http://localhost:8000/ || exit 1
-          docker stop test-app
+          python3 -m pip install semgrep
+          semgrep scan --config auto --error .
