@@ -1,0 +1,7 @@
+# Default owner untuk semua file
+*       @martzazhugo
+
+# File/directory sensitif
+/security/       @martzazhugo
+/auth/           @martzazhugo
+.github/         @martzazhugo
