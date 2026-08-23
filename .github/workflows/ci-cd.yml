@@ -29,7 +29,7 @@ jobs:
           docker build -t secure-api-platform:${{ github.sha }} .
 
   secret-scan:
-    name: Secret Leak Scanning (Gitleaks)
+    name: Secret Leak Scanning (Gitleaks CLI)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -37,10 +37,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@bd000f288230232537a421a60f64c18600d832e5
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install & Run Gitleaks CLI
+        run: |
+          VERSION=8.18.2
+          wget https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz
+          tar -zxvf gitleaks_${VERSION}_linux_x64.tar.gz
+          ./gitleaks detect --source . --verbose
 
   sast-scan:
     name: SAST Scanning (Semgrep)
