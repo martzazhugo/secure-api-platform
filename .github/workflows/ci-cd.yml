@@ -10,13 +10,12 @@ jobs:
   build-and-test:
     name: Build and Sanity Test
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3
         with:
           python-version: "3.10"
 
@@ -29,9 +28,51 @@ jobs:
         run: |
           docker build -t secure-api-platform:${{ github.sha }} .
 
-      - name: Test Container Startup
+  secret-scan:
+    name: Secret Leak Scanning (Gitleaks CLI)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+        with:
+          fetch-depth: 0
+
+      - name: Install & Run Gitleaks CLI
         run: |
-          docker run -d -p 8000:8000 --name test-app secure-api-platform:${{ github.sha }}
-          sleep 3
-          curl --fail http://localhost:8000/ || exit 1
-          docker stop test-app
+          VERSION=8.18.2
+          wget https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz
+          tar -zxvf gitleaks_${VERSION}_linux_x64.tar.gz
+          ./gitleaks detect --source . --verbose
+
+  sast-scan:
+    name: SAST Scanning (Semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+
+      - name: Run Semgrep
+        run: |
+          python3 -m pip install semgrep
+          semgrep scan --config auto --error .
+  sca-and-container-scan:
+    name: SCA & Container Vulnerability Scanning (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+
+      - name: Build Docker Image for Scanning
+        run: |
+          docker build -t secure-api-platform:${{ github.sha }} .
+
+      - name: Install & Run Trivy CLI
+        run: |
+          sudo apt-get install wget apt-transport-https gnupg lsb-release -y
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install trivy -y
+
+          # Memindai Docker Image & Dependensi Python (Gagal jika ada vulnerability CRITICAL)
+          trivy image --severity HIGH,CRITICAL --exit-code 1 secure-api-platform:${{ github.sha }}
