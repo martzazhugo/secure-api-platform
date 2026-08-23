@@ -12,8 +12,8 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
 
 COPY requirements.txt .
 
-# Upgrade pip, setuptools, dan wheel ke versi paling aman
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
+# Upgrade pip terlebih dahulu tanpa menyentuh setuptools bawaan
+RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
 COPY . .
