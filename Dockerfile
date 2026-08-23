@@ -1,26 +1,33 @@
-FROM python:3.10-slim
-
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+# Stage 1: Build & Install
+FROM python:3.10-slim AS builder
 
 WORKDIR /app
 
-# Upgrade paket OS
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
-    curl \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 COPY requirements.txt .
 
-# 1. Upgrade pip & install requirements tanpa cache
-# 2. Hapus setuptools, wheel, dan jaraco setelah install selesai
+# Force upgrade seluruh dependensi dan sub-dependensi (termasuk msgpack)
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir --upgrade -r requirements.txt \
-    && pip uninstall -y setuptools wheel || true \
-    && rm -rf /usr/local/lib/python3.10/site-packages/setuptools* \
-    && rm -rf /usr/local/lib/python3.10/site-packages/wheel* \
-    && rm -rf /usr/local/lib/python3.10/site-packages/jaraco*
+    && pip install --no-cache-dir --upgrade --upgrade-strategy eager -r requirements.txt \
+    && pip uninstall -y setuptools wheel
 
+# Stage 2: Final Runtime Image
+FROM python:3.10-slim AS runner
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH"
+
+# Copy virtualenv bersih dari builder stage
+COPY --from=builder /opt/venv /opt/venv
 COPY . .
 
 RUN addgroup --system appuser && adduser --system --group appuser \
