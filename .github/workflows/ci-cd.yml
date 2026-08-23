@@ -26,7 +26,7 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build -t secure-api-platform:${{ github.sha }} .
+          docker build --no-cache -t secure-api-platform:${{ github.sha }} .
 
   secret-scan:
     name: Secret Leak Scanning (Gitleaks CLI)
@@ -55,3 +55,25 @@ jobs:
         run: |
           python3 -m pip install semgrep
           semgrep scan --config auto --error .
+
+  sca-and-container-scan:
+    name: SCA & Container Vulnerability Scanning (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+
+      - name: Build Docker Image for Scanning
+        run: |
+          docker build -t secure-api-platform:${{ github.sha }} .
+
+      - name: Install & Run Trivy CLI
+        run: |
+          sudo apt-get install wget apt-transport-https gnupg lsb-release -y
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install trivy -y
+
+          # Memindai celah keamanan HIGH & CRITICAL yang SUDAH MEMILIKI FIX/PATCH
+          trivy image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 secure-api-platform:${{ github.sha }}

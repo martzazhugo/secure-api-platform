@@ -1,29 +1,48 @@
-# 1. Gunakan minimal base image (Debian Slim / Alpine) untuk mengurangi attack surface
-FROM python:3.10-slim
-
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+# STAGE 1: Builder
+FROM python:3.10-slim-bookworm AS builder
 
 WORKDIR /app
 
-# Install dependensi sistem secara minimal
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements.txt .
+
+# Install paket, lalu HAPUS setuptools, pip, dan wheel dari virtualenv
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt \
+    && rm -rf /opt/venv/lib/python3.10/site-packages/setuptools* \
+    && rm -rf /opt/venv/lib/python3.10/site-packages/pip* \
+    && rm -rf /opt/venv/lib/python3.10/site-packages/wheel*
+
+# STAGE 2: Clean Runtime
+FROM python:3.10-slim-bookworm AS runner
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH"
+
+# Update paket OS Debian 12 Stable
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy dan install requirements
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Bersihkan python global bawaan OS
+RUN rm -rf /usr/local/lib/python3.10/site-packages/*
 
-# Copy sisa kode aplikasi
+COPY --from=builder /opt/venv /opt/venv
 COPY . .
 
-# SECURITY HARDENING: Buat non-root user dan berikan kepemilikan folder
 RUN addgroup --system appuser && adduser --system --group appuser \
     && chown -R appuser:appuser /app
 
-# Pindah ke non-root user
 USER appuser
 
 EXPOSE 8000
