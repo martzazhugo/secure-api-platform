@@ -1,10 +1,10 @@
 from fastapi import FastAPI, HTTPException
 import sqlite3
+import os
 
 app = FastAPI(title="Secure API Platform - Lab")
 DB_FILE = "app_lab.db"
 
-# Inisialisasi DB SQLite sederhana
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -25,21 +25,23 @@ def init_db():
 
 init_db()
 
-# VULNERABILITY #1: Hardcoded Secret
-JWT_SECRET_KEY = "super-secret-key-that-should-not-be-hardcoded"
+# PERBAIKAN #1: Ambil rahasia dari Environment Variable (tidak di-hardcode)
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "default-fallback-secret-for-local-dev-only")
 
 @app.get("/")
 def read_root():
     return {"status": "healthy", "service": "secure-api-platform"}
 
-# VULNERABILITY #2: SQL Injection via Raw Query Formatting
+# PERBAIKAN #2: Gunakan Parameterized Query (?) untuk mencegah SQL Injection
 @app.get("/api/v1/users/search")
 def search_user(username: str):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    query = f"SELECT id, username, role FROM users WHERE username = '{username}'"
+    
+    # Menggunakan tuples (?) menggantikan string formatting (f"...")
+    query = "SELECT id, username, role FROM users WHERE username = ?"
     try:
-        cursor.execute(query)
+        cursor.execute(query, (username,))
         result = cursor.fetchall()
         conn.close()
         return {"query_executed": query, "results": result}
