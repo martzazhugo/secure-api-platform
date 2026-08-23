@@ -12,9 +12,14 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
 
 COPY requirements.txt .
 
-# Upgrade pip terlebih dahulu tanpa menyentuh setuptools bawaan
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+# 1. Upgrade pip & install requirements tanpa cache
+# 2. Hapus setuptools, wheel, dan jaraco setelah install selesai
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && pip install --no-cache-dir --upgrade -r requirements.txt \
+    && pip uninstall -y setuptools wheel || true \
+    && rm -rf /usr/local/lib/python3.10/site-packages/setuptools* \
+    && rm -rf /usr/local/lib/python3.10/site-packages/wheel* \
+    && rm -rf /usr/local/lib/python3.10/site-packages/jaraco*
 
 COPY . .
 
