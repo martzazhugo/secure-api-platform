@@ -5,13 +5,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Upgrade paket OS untuk menutupi celah keamanan (CVE) bawaan base image
+# Upgrade paket OS
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
+# Upgrade pip, setuptools, dan wheel ke versi paling aman
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
