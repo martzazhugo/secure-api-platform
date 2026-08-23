@@ -55,6 +55,7 @@ jobs:
         run: |
           python3 -m pip install semgrep
           semgrep scan --config auto --error .
+
   sca-and-container-scan:
     name: SCA & Container Vulnerability Scanning (Trivy)
     runs-on: ubuntu-latest
@@ -73,6 +74,4 @@ jobs:
           echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
           sudo apt-get update
           sudo apt-get install trivy -y
-
-          # Memindai Docker Image & Dependensi Python (Gagal jika ada vulnerability CRITICAL)
           trivy image --severity HIGH,CRITICAL --exit-code 1 secure-api-platform:${{ github.sha }}
