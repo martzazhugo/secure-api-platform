@@ -11,11 +11,9 @@ jobs:
     name: Build and Sanity Test
     runs-on: ubuntu-latest
     steps:
-      # Pinned actions/checkout@v4.1.7 SHA
       - name: Checkout Repository
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
 
-      # Pinned actions/setup-python@v5.1.0 SHA
       - name: Set up Python 3.10
         uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3
         with:
@@ -34,15 +32,13 @@ jobs:
     name: Secret Leak Scanning (Gitleaks)
     runs-on: ubuntu-latest
     steps:
-      # Pinned actions/checkout@v4.1.7 SHA
       - name: Checkout Repository
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
         with:
           fetch-depth: 0
 
-      # Pinned gitleaks/gitleaks-action@v2.3.7 SHA
       - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@bd2db5390ed34e2c88d8b671a533ff5390f0c08d
+        uses: gitleaks/gitleaks-action@bd000f288230232537a421a60f64c18600d832e5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -50,7 +46,6 @@ jobs:
     name: SAST Scanning (Semgrep)
     runs-on: ubuntu-latest
     steps:
-      # Pinned actions/checkout@v4.1.7 SHA
       - name: Checkout Repository
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
 
