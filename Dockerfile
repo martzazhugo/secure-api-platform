@@ -1,5 +1,5 @@
-# STAGE 1: Build
-FROM python:3.10-slim AS builder
+# STAGE 1: Builder
+FROM python:3.10-slim-bookworm AS builder
 
 WORKDIR /app
 
@@ -13,12 +13,15 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 COPY requirements.txt .
 
+# Install paket, lalu HAPUS setuptools, pip, dan wheel dari virtualenv
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
-    && pip uninstall -y wheel jaraco.context || true
+    && rm -rf /opt/venv/lib/python3.10/site-packages/setuptools* \
+    && rm -rf /opt/venv/lib/python3.10/site-packages/pip* \
+    && rm -rf /opt/venv/lib/python3.10/site-packages/wheel*
 
-# STAGE 2: Runtime
-FROM python:3.10-slim AS runner
+# STAGE 2: Clean Runtime
+FROM python:3.10-slim-bookworm AS runner
 
 WORKDIR /app
 
@@ -26,7 +29,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:$PATH"
 
-# Hapus seluruh paket Python global OS bawaan Debian yang dibaca Trivy
+# Update paket OS Debian 12 Stable
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Bersihkan python global bawaan OS
 RUN rm -rf /usr/local/lib/python3.10/site-packages/*
 
 COPY --from=builder /opt/venv /opt/venv
